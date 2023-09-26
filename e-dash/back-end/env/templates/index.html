@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+
+<body>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8  offset-lg-2">
+                <h3 class="mt-5">Live Streaming</h3>
+                <img id='image' src="{{ url_for('video_feed') }}" width="40%">
+            </div>
+            {% for item in data %}
+            <p id="classId">{{item}}</p>
+            {% endfor %}
+        </div>
+
+        <button onclick="capture()">Capture</button>
+        <button onclick="back()">Back</button>
+    </div>
+    <script>
+        function back() {
+            var id = document.getElementById("classId").innerHTML;
+            window.location.href = "http://localhost:3000/profile/" + id;
+        }
+
+        // const mark = async (roll) => {
+        // var id = document.getElementById("classId").innerHTML;
+        // await fetch('/mark', {
+        //     method: "Post",
+        //     headers: {
+        //         'Content-Type': 'application/json',
+        //     },
+        //     body: JSON.stringify({ classId: id, studentId: roll }),
+        // })
+        // // document.getElementsByClassName(roll).remove();
+
+        // };
+
+
+        const addTime = async (classid, date, time) => {
+            try {
+                const response = await fetch(`http://localhost:5000/add-schedule/${classid}/${date}/${time}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-type': 'application/json; charset=UTF-8',
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error('Error updating schedule');
+                }
+
+                const result = await response.json();
+                console.log(result);
+            } catch (error) {
+                console.error('Error updating schedule:', error);
+            }
+        };
+
+        window.capture = async function () {
+            var d = document.getElementById("div");
+            if (d != null) d.remove();
+            var img = document.getElementById("image");
+            var id = document.getElementById("classId").innerHTML;
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = img.width;
+            canvas.height = img.height;
+
+            context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+            // Convert the image on the canvas to a data URL (base64-encoded)
+            const imageDataURL = canvas.toDataURL('image/jpeg'); // Adjust format if needed
+
+            // Send the image data to the backend
+            await fetch('/api', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ data: imageDataURL, classId: id }),
+            }).then((response) => response.json())
+                .then((data) => {
+                    addTime(id, data['attendanceDate'], data['attendanceTime']);
+                    // console.log(absentees);
+                    var absentees = data['absentees'];
+                    if (document.getElementById("div") == null) {
+                        var x = document.createElement("div");
+                        x.id = "div";
+                        var head = document.createElement("h2");
+                        head.innerHTML = "Absent List";
+                        x.appendChild(head);
+
+                        var table = document.createElement("table");
+                        var row = document.createElement("tr");
+                        var col1 = document.createElement("th");
+                        col1.innerHTML = "Roll No.";
+                        var col2 = document.createElement("th");
+                        col2.innerHTML = "Attendance";
+                        row.appendChild(col1);
+                        row.appendChild(col2);
+                        table.appendChild(row);
+
+                        for (var j = 0; j < absentees.length; j++) {
+                            var row = document.createElement("tr");
+                            row.id = absentees[j];
+                            var col1 = document.createElement("td");
+                            col1.innerHTML = absentees[j];
+                            var col2 = document.createElement("td");
+                            var btn = document.createElement("button");
+                            btn.innerHTML = "Mark Present";
+                            btn.className = absentees[j];
+                            btn.onclick = function () {
+                                const roll = this.className;
+                                const classId = id;
+                                // console.log(roll);
+                                // console.log(classId);
+                                fetch('/mark', {
+                                    method: "POST",
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({ classId: id, studentId: this.className }),
+                                })
+                                // fetch('/mark', {
+                                //     method: "POST",
+                                //     headers: {
+                                //         'Content-Type': 'application/json',
+                                //     },
+                                //     body: JSON.stringify({ classId: '64895de338e66355b2e9448c', studentId: '201144' }),
+                                // })
+                                console.log(this.className);
+                                const r = document.getElementById(this.className);
+                                if (r != null) r.remove();
+                            }
+                            col2.appendChild(btn);
+                            row.appendChild(col1);
+                            row.appendChild(col2);
+                            table.appendChild(row);
+
+                        }
+                        x.appendChild(table);
+                        document.body.appendChild(x);
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                });
+        }
+    </script>
+
+</body>
+
+</html>
